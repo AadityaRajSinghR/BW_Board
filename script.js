@@ -48,7 +48,7 @@ window.onload = function () {
                 addTextButton.classList.remove('bg-indigo-600');
                 cursor.style.display = 'none';
                 canvas.classList.add('cursor-crosshair');
-                
+
                 break;
             case 'eraser':
                 eraserMode = true;
@@ -56,7 +56,7 @@ window.onload = function () {
                 pencilButton.classList.remove('bg-indigo-600');
                 addTextButton.classList.remove('bg-indigo-600');
                 cursor.style.display = 'block';
-                
+
                 break;
             case 'text':
                 addTextMode = true;
@@ -65,7 +65,7 @@ window.onload = function () {
                 pencilButton.classList.remove('bg-indigo-600');
                 cursor.style.display = 'none';
                 canvas.classList.add('cursor-text');
-                
+
                 break;
         }
     }
@@ -472,7 +472,7 @@ window.onload = function () {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         texts = [];
         drawingPaths = [];
-        drawHorizontalLines();
+        if (localStorage.getItem('isnotebook') === 'true') drawHorizontalLines();
         setLocalStorage();
     });
 
@@ -631,6 +631,9 @@ window.onload = function () {
         applyMode(!isDarkMode);
     });
 
+    var isnotebook = false;
+    localStorage.setItem('isnotebook', isnotebook);
+
     // === Draw Horizontal Lines ===
     function drawHorizontalLines() {
         const lineSpacing = 35; // Adjust the spacing between lines as needed
@@ -652,12 +655,19 @@ window.onload = function () {
     // Redraw the canvas
     function redrawCanvas() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawHorizontalLines();
         drawPaths();
         drawTexts();
+        if (isnotebook) drawHorizontalLines();
     }
 
     // Initial draw call
     redrawCanvas();
+
+    document.getElementById('mode').addEventListener('click', () => {
+        isnotebook = !isnotebook;
+        localStorage.setItem('isnotebook', isnotebook);
+        redrawCanvas();
+    });
+
 
 };
