@@ -1,14 +1,25 @@
 window.onload = function () {
     // Elements
-    const cursor = document.getElementById('cursor');
-    const pencilButton = document.getElementById('pencilButton');
-    const eraserButton = document.getElementById('eraserButton');
-    const canvas = document.getElementById('drawingCanvas');
-    const addTextButton = document.getElementById('addTextButton');
-    const font_size = document.getElementById('font_size');
+    const elements = {
+        cursor: document.getElementById('cursor'),
+        pencilButton: document.getElementById('pencilButton'),
+        eraserButton: document.getElementById('eraserButton'),
+        canvas: document.getElementById('drawingCanvas'),
+        addTextButton: document.getElementById('addTextButton'),
+        font_size: document.getElementById('font_size'),
+        handGrab: document.getElementById('handButton'),
+        zoomInButton: document.getElementById('zoomInButton'),
+        zoomOutButton: document.getElementById('zoomOutButton'),
+        clearButton: document.getElementById('clearButton'),
+        rubber_size: document.getElementById('rubber_size'),
+        nav: document.querySelector('#navbar'),
+        navToggle: document.querySelector('#nav-toggle'),
+        logoToggle: document.querySelector('#logoToggle'),
+        colorPicker: document.getElementById('color_picker'),
+        modeButton: document.getElementById('mode')
+    };
 
-    const ctx = canvas.getContext('2d');
-
+    const ctx = elements.canvas.getContext('2d');
 
     // Drawing States
     let isDrawing = false;
@@ -34,38 +45,35 @@ window.onload = function () {
     let canvasYOffset = 0;
 
     // Set canvas size
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    elements.canvas.width = window.innerWidth;
+    elements.canvas.height = window.innerHeight;
 
-
+    // === Tool Selection ===
     function setActiveTool(tool) {
         resetToolState();
         switch (tool) {
             case 'pencil':
                 pencilMode = true;
-                pencilButton.classList.add('bg-indigo-600');
-                eraserButton.classList.remove('bg-indigo-600');
-                addTextButton.classList.remove('bg-indigo-600');
-                cursor.style.display = 'none';
-                canvas.classList.add('cursor-crosshair');
-
+                elements.pencilButton.classList.add('bg-indigo-600');
+                elements.eraserButton.classList.remove('bg-indigo-600');
+                elements.addTextButton.classList.remove('bg-indigo-600');
+                elements.cursor.style.display = 'none';
+                elements.canvas.classList.add('cursor-crosshair');
                 break;
             case 'eraser':
                 eraserMode = true;
-                eraserButton.classList.add('bg-indigo-600');
-                pencilButton.classList.remove('bg-indigo-600');
-                addTextButton.classList.remove('bg-indigo-600');
-                cursor.style.display = 'block';
-
+                elements.eraserButton.classList.add('bg-indigo-600');
+                elements.pencilButton.classList.remove('bg-indigo-600');
+                elements.addTextButton.classList.remove('bg-indigo-600');
+                elements.cursor.style.display = 'block';
                 break;
             case 'text':
                 addTextMode = true;
-                addTextButton.classList.add('bg-indigo-600');
-                eraserButton.classList.remove('bg-indigo-600');
-                pencilButton.classList.remove('bg-indigo-600');
-                cursor.style.display = 'none';
-                canvas.classList.add('cursor-text');
-
+                elements.addTextButton.classList.add('bg-indigo-600');
+                elements.eraserButton.classList.remove('bg-indigo-600');
+                elements.pencilButton.classList.remove('bg-indigo-600');
+                elements.cursor.style.display = 'none';
+                elements.canvas.classList.add('cursor-text');
                 break;
         }
     }
@@ -84,89 +92,76 @@ window.onload = function () {
 
     // === Redrawing Canvas ===
     function redrawCanvas() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
         drawPaths();
         drawTexts();
+        if (isnotebook) drawHorizontalLines();
     }
 
-    // Event listeners for zoom in/out using keys or buttons
-    window.addEventListener('keydown', (e) => {
-        if (e.key === '+') {
-            applyZoom(1 + zoomIncrement); // Zoom in
-        } else if (e.key === '-') {
-            applyZoom(1 - zoomIncrement); // Zoom out
-        }
-    });
-
-    document.getElementById('zoomInButton').addEventListener('click', () => applyZoom(1 + zoomIncrement));
-    document.getElementById('zoomOutButton').addEventListener('click', () => applyZoom(1 - zoomIncrement));
-
-
-
-    // === Shortcut Keys ===
-    let keysPressed = {};
-
-
     // === Undo and Redo ===
+
     let undoStack = [];
     let redoStack = [];
 
     function saveState() {
-        undoStack.push({
+        // Create a snapshot of current state
+        const currentState = {
             texts: JSON.parse(JSON.stringify(texts)),
             drawingPaths: JSON.parse(JSON.stringify(drawingPaths))
-        });
-        redoStack = []; // Clear redo stack on new action
+        };
+
+        // Add to undo stack
+        undoStack.push(currentState);
+
+
+        // Clear redo stack when new action is performed
+        redoStack = [];
     }
 
     function undo() {
-        if (undoStack.length > 0) {
-            const lastState = undoStack.pop();
-            redoStack.push({
-                texts: JSON.parse(JSON.stringify(texts)),
-                drawingPaths: JSON.parse(JSON.stringify(drawingPaths))
-            });
-            texts = lastState.texts;
-            drawingPaths = lastState.drawingPaths;
-            setLocalStorage();
-            redrawCanvas();
-        }
+        if (undoStack.length === 0) return;
+
+        // Save current state to redo stack
+        const currentState = {
+            texts: JSON.parse(JSON.stringify(texts)),
+            drawingPaths: JSON.parse(JSON.stringify(drawingPaths))
+        };
+        redoStack.push(currentState);
+
+        // Restore previous state
+        const previousState = undoStack.pop();
+        texts = previousState.texts;
+        drawingPaths = previousState.drawingPaths;
+
+        // Update storage and redraw
+        setLocalStorage();
+        redrawCanvas();
     }
 
     function redo() {
-        if (redoStack.length > 0) {
-            const nextState = redoStack.pop();
-            undoStack.push({
-                texts: JSON.parse(JSON.stringify(texts)),
-                drawingPaths: JSON.parse(JSON.stringify(drawingPaths))
-            });
-            texts = nextState.texts;
-            drawingPaths = nextState.drawingPaths;
-            setLocalStorage();
-            redrawCanvas();
-        }
+        if (redoStack.length === 0) return;
+
+        // Save current state to undo stack
+        const currentState = {
+            texts: JSON.parse(JSON.stringify(texts)),
+            drawingPaths: JSON.parse(JSON.stringify(drawingPaths))
+        };
+        undoStack.push(currentState);
+
+        // Restore next state
+        const nextState = redoStack.pop();
+        texts = nextState.texts;
+        drawingPaths = nextState.drawingPaths;
+
+        // Update storage and redraw
+        setLocalStorage();
+        redrawCanvas();
     }
-
-    // Save state before any drawing or text addition
-    canvas.addEventListener('mousedown', saveState);
-    document.getElementById('addTextButton').addEventListener('click', saveState);
-
-    // Event listeners for undo and redo
-    window.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'z') {
-            undo();
-        } else if (e.ctrlKey && e.key === 'y') {
-            redo();
-        }
-    });
-
-
 
     // === Local Storage Management ===
     function setLocalStorage() {
         localStorage.setItem('texts', JSON.stringify(texts));
         localStorage.setItem('drawingPaths', JSON.stringify(drawingPaths));
-
     }
 
     // Load texts and paths from local storage on page load
@@ -177,14 +172,9 @@ window.onload = function () {
         drawingPaths = JSON.parse(localStorage.getItem('drawingPaths'));
     }
 
-
-
-    window.addEventListener('keyup', (e) => {
-        delete keysPressed[e.key];
-    });
     // === Drawing and Erasing ===
     function drawPath(e) {
-        const colorPicker = document.getElementById('color_picker').value;
+        const colorPicker = elements.colorPicker.value;
         const brushSize = document.getElementById('brush_size').value;
 
         const path = {
@@ -196,6 +186,7 @@ window.onload = function () {
             size: brushSize
         };
         drawingPaths.push(path);
+        saveState(); // Save state after drawing
         setLocalStorage();
         lastX = path.endX;
         lastY = path.endY;
@@ -205,10 +196,16 @@ window.onload = function () {
     function erasePath(e) {
         const mouseX = (e.offsetX - canvasXOffset) / scaleFactor;
         const mouseY = (e.offsetY - canvasYOffset) / scaleFactor;
+        const originalLength = drawingPaths.length;
         drawingPaths = drawingPaths.filter((path) => {
             return !(Math.abs(path.startX - mouseX) < eraserSize && Math.abs(path.startY - mouseY) < eraserSize);
         });
-        setLocalStorage();
+
+        // Only save state if something was actually erased
+        if (originalLength !== drawingPaths.length) {
+            saveState();
+            setLocalStorage();
+        }
         redrawCanvas();
     }
 
@@ -216,42 +213,7 @@ window.onload = function () {
         isDrawing = false;
     }
 
-    canvas.addEventListener('mousedown', (e) => {
-        if (pencilMode) {
-            isDrawing = true;
-            [lastX, lastY] = [
-                (e.offsetX - canvasXOffset) / scaleFactor,
-                (e.offsetY - canvasYOffset) / scaleFactor
-            ];
-        } else if (eraserMode) {
-            isDrawing = true;
-        } else {
-            isDrawing = false;
-        }
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-        if (isDrawing) {
-            if (pencilMode) {
-                drawPath(e);
-            } else if (eraserMode) {
-                erasePath(e);
-            }
-        }
-    });
-
-    canvas.addEventListener('mouseup', () => stopDrawing());
-    canvas.addEventListener('mouseout', () => stopDrawing());
-
     // === Text Handling ===
-    document.getElementById('addTextButton').addEventListener('click', () => {
-        addTextMode = true;
-        eraserMode = false;
-        pencilMode = false;
-        setActiveTool('text');
-        canvas.addEventListener('click', addTextHandler);
-    });
-
     function addTextHandler(e) {
         createTextInput(
             (e.offsetX - canvasXOffset) / scaleFactor,
@@ -259,22 +221,27 @@ window.onload = function () {
             ''
         );
         addTextMode = false;
-        canvas.removeEventListener('click', addTextHandler);
+        elements.addTextButton.classList.remove('bg-indigo-600');
+        resetToolState();
+        elements.canvas.removeEventListener('click', addTextHandler);
     }
 
     function createTextInput(x, y, initialValue, textObj = null) {
-        let font_size_ = font_size.value;
-        const colorPicker = document.getElementById('color_picker').value;
+        let font_size_ = elements.font_size.value;
+        const colorPicker = elements.colorPicker.value;
         const input = document.createElement('input');
         input.type = 'text';
         input.value = initialValue;
         input.placeholder = 'Enter text';
         input.style.position = 'absolute';
-        input.style.left = `${x + canvas.offsetLeft}px`;
-        input.style.top = `${y + canvas.offsetTop}px`;
-        input.style.fontSize = font_size_;
+        input.style.left = `${x + elements.canvas.offsetLeft}px`;
+        input.style.top = `${y + elements.canvas.offsetTop}px`;
+        input.style.fontSize = font_size_ + 'px';
         input.style.color = colorPicker;
-        input.style.border = '1px solid #000';
+        input.style.border = '1px solid #1F2937';
+        input.style.outline = 'none';
+        input.style.padding = '5px';
+        input.style.backgroundColor = 'transparent';
 
         document.body.appendChild(input);
         input.focus();
@@ -284,7 +251,15 @@ window.onload = function () {
                 if (textObj) {
                     textObj.text = input.value;
                 } else {
-                    texts.push({ text: input.value, x, y, fontSize: font_size_, fontColor: colorPicker });
+                    texts.push({
+                        text: input.value,
+                        x,
+                        y,
+                        fontSize: font_size_,
+                        fontColor: colorPicker,
+                        fontFamily: 'Arial'
+                    });
+                    saveState(); // Save state after adding text
                     setLocalStorage();
                 }
                 redrawCanvas();
@@ -301,30 +276,34 @@ window.onload = function () {
 
     function findTextAtPosition(x, y) {
         return texts.find(text => {
-            // Set the canvas context font to match the current text properties for accurate measurement
             ctx.font = `${text.fontSize}px ${text.fontFamily || 'Arial'}`;
-
-            // Measure text width and add dynamic padding
-            const textWidth = ctx.measureText(text.text).width;
-            const dynamicPadding = textWidth * 0.05; // Adjust the padding as needed (5% of text width)
-
-            // Calculate text boundaries with padding
-            const leftBoundary = (text.x * scaleFactor) + canvasXOffset - dynamicPadding;
-            const rightBoundary = leftBoundary + textWidth + (2 * dynamicPadding);
-            const topBoundary = (text.y * scaleFactor) + canvasYOffset - text.fontSize;
-            const bottomBoundary = (text.y * scaleFactor) + canvasYOffset;
-
-
-            // Check if the given (x, y) is within the text boundaries
+            const textWidth = ctx.measureText(text.text).width * scaleFactor;
+            const textHeight = text.fontSize * 1.2 * scaleFactor; // Adjust height to account for text padding
+            const leftBoundary = (text.x) + canvasXOffset;
+            const rightBoundary = leftBoundary + textWidth;
+            const topBoundary = (text.y) + canvasYOffset - textHeight;
+            const bottomBoundary = (text.y) + canvasYOffset;
             const isWithinXBounds = x >= leftBoundary && x <= rightBoundary;
             const isWithinYBounds = y >= topBoundary && y <= bottomBoundary;
-
             return isWithinXBounds && isWithinYBounds;
         });
     }
 
-
-
+    function drawBorderAroundText(text, color, clear) {
+        if (clear) {
+            redrawCanvas();
+        }
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.font = `${text.fontSize}px ${text.fontFamily || 'Arial'}`;
+        const textWidth = ctx.measureText(text.text).width * scaleFactor;
+        const textHeight = text.fontSize * 1.2 * scaleFactor; // Adjust height to account for text padding
+        const x = (text.x * scaleFactor) + canvasXOffset;
+        const y = (text.y * scaleFactor) + canvasYOffset - textHeight;
+        const width = textWidth;
+        const height = textHeight;
+        ctx.strokeRect(x, y, width, height);
+    }
 
     // === Text Selection and Deletion ===
     let selectedText = null;
@@ -332,12 +311,10 @@ window.onload = function () {
     function selectElement(x, y) {
         selectedText = findTextAtPosition(x, y);
         if (selectedText) {
-            canvas.style.cursor = 'pointer';
+            elements.canvas.style.cursor = 'pointer';
             drawBorderAroundText(selectedText, 'red', false);
-        }
-        else {
-            canvas.style.cursor = 'default';
-            // redrawCanvas();
+        } else {
+            elements.canvas.style.cursor = 'default';
         }
     }
 
@@ -350,78 +327,33 @@ window.onload = function () {
         }
     }
 
-    function drawBorderAroundText(text, color, clear) {
-        if (clear) {
-            redrawCanvas(); // Ensure this function clears the canvas appropriately
-        }
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.font = `${text.fontSize}px ${text.fontFamily || 'Arial'}`;
-
-        // Measure the text width and set dynamic padding
-        const textWidth = ctx.measureText(text.text).width;
-        const dynamicPadding = textWidth * 0.05; // 5% of the text width as padding (adjust as needed)
-
-        // Calculate rectangle parameters with dynamic padding
-        const x = (text.x * scaleFactor) + canvasXOffset - dynamicPadding;
-        const y = (text.y * scaleFactor) + canvasYOffset - text.fontSize + dynamicPadding;
-        const width = textWidth + (dynamicPadding * 2);
-        const height = text.fontSize;
-
-        // Draw the border around the text with the dynamic padding
-        ctx.strokeRect(x, y, width, height);
-    }
-
-    // Event listener for selecting text or paths
-    canvas.addEventListener('click', (e) => {
-        if (!pencilMode && !eraserMode) {
-            selectElement(
-                (e.offsetX - canvasXOffset) / scaleFactor,
-                (e.offsetY - canvasYOffset) / scaleFactor
-            );
-            wasHoveringText = true;
-        }
-    });
-
-    // Event listner for hover effect on text
-    let wasHoveringText = false;
-
-    canvas.addEventListener('mousemove', (e) => {
-        if (!pencilMode && !eraserMode) {
-            const x = (e.offsetX - canvasXOffset) / scaleFactor;
-            const y = (e.offsetY - canvasYOffset) / scaleFactor;
-            const text = findTextAtPosition(x, y);
-
-            if (text) {
-                if (!wasHoveringText) {
-                    canvas.style.cursor = 'pointer';
-                    drawBorderAroundText(text, 'blue', true);
-                    wasHoveringText = true;
-                }
-            } else {
-                if (wasHoveringText) {
-                    canvas.style.cursor = 'default';
-                    redrawCanvas();
-                    wasHoveringText = false;
-                }
-            }
-        }
-    });
+    // function drawBorderAroundText(text, color, clear) {
+    //     if (clear) {
+    //         redrawCanvas();
+    //     }
+    //     ctx.strokeStyle = color;
+    //     ctx.lineWidth = 1;
+    //     ctx.font = `${text.fontSize}px ${text.fontFamily || 'Arial'}`;
+    //     const textWidth = ctx.measureText(text.text).width;
+    //     const dynamicPadding = textWidth * 0.05;
+    //     const x = (text.x * scaleFactor) + canvasXOffset - dynamicPadding;
+    //     const y = (text.y * scaleFactor) + canvasYOffset - text.fontSize + dynamicPadding;
+    //     const width = textWidth + (dynamicPadding * 2);
+    //     const height = text.fontSize;
+    //     ctx.strokeRect(x, y, width, height);
+    // }
 
     // === Panning ===
     let isDragging = false;
     let startX, startY;
 
-    canvas.addEventListener('mousedown', (e) => {
-        if (!isDrawing && !pencilMode && !eraserMode) {
-            isDragging = true;
-            startX = e.offsetX;
-            startY = e.offsetY;
-        }
-    });
+    function startDragging(e) {
+        isDragging = true;
+        startX = e.offsetX;
+        startY = e.offsetY;
+    }
 
-    canvas.addEventListener('mousemove', (e) => {
+    function handleDragging(e) {
         if (isDragging) {
             const dx = e.offsetX - startX;
             const dy = e.offsetY - startY;
@@ -431,19 +363,12 @@ window.onload = function () {
             startY = e.offsetY;
             redrawCanvas();
         }
-    });
+    }
 
-    canvas.addEventListener('mouseup', () => {
+    function stopDragging() {
         isDragging = false;
-    });
+    }
 
-    canvas.addEventListener('mouseout', () => {
-        isDragging = false;
-    });
-
-
-
-    //Yaha se age comment lagana he
     // === Drawing Path Rendering ===
     function drawPaths() {
         drawingPaths.forEach(path => {
@@ -465,28 +390,18 @@ window.onload = function () {
         });
     }
 
-
-
     // === Clear Canvas Button ===
-    document.getElementById('clearButton').addEventListener('click', () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    elements.clearButton.addEventListener('click', () => {
+        saveState(); // Save state before clearing
+        ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
         texts = [];
         drawingPaths = [];
         if (localStorage.getItem('isnotebook') === 'true') drawHorizontalLines();
         setLocalStorage();
     });
 
-    // === Delete Key Listener for Text Deletion ===
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Delete') {
-            deleteSelected();
-        }
-    });
-
-
-
     // === Eraser Size Adjustment ===
-    document.getElementById('rubber_size').addEventListener('change', (e) => {
+    elements.rubber_size.addEventListener('change', (e) => {
         eraserSize = e.target.value;
         if (eraserMode) {
             updateEraserCursor(eraserSize);
@@ -494,36 +409,32 @@ window.onload = function () {
     });
 
     function updateEraserCursor(size) {
-        cursor.style.width = `${size}px`;
-        cursor.style.height = `${size}px`;
-        cursor.style.display = 'block';
-        cursor.style.zIndex = -1;
+        elements.cursor.style.width = `${size}px`;
+        elements.cursor.style.height = `${size}px`;
+        elements.cursor.style.display = 'block';
+        elements.cursor.style.zIndex = -1;
     }
 
-    // Canvas event listener for cursor positioning while erasing
-    canvas.addEventListener('mousemove', (e) => {
-        cursor.style.left = `${e.clientX - (eraserSize / 2)}px`;
-        cursor.style.top = `${e.clientY - (eraserSize / 2)}px`;
-    });
-
     // === Pencil Tool Button Toggle ===
-    pencilButton.addEventListener('click', () => {
+    elements.pencilButton.addEventListener('click', () => {
         pencilMode = !pencilMode;
         if (pencilMode) {
             setActiveTool('pencil');
         } else {
+            elements.pencilButton.classList.remove('bg-indigo-600');
             resetToolState();
         }
     });
 
     // === Eraser Tool Button Toggle ===
-    eraserButton.addEventListener('click', () => {
+    elements.eraserButton.addEventListener('click', () => {
         pencilMode = false;
         eraserMode = !eraserMode;
         if (eraserMode) {
             setActiveTool('eraser');
             updateEraserCursor(eraserSize);
         } else {
+            elements.eraserButton.classList.remove('bg-indigo-600');
             resetToolState();
         }
     });
@@ -531,102 +442,69 @@ window.onload = function () {
     // === Initialize with previously saved drawing data ===
     redrawCanvas();
 
-
-
-    // ===make navbar draggable===
-
-    const nav = document.querySelector('#navbar');
-    const navToggle = document.querySelector('#nav-toggle');
-
-
-
-
+    // === Make Navbar Draggable ===
     let isNavDragging = false;
     let offsetX = 0;
     let offsetY = 0;
 
-    // Start dragging
-    navToggle.addEventListener('mousedown', (e) => {
+    elements.navToggle.addEventListener('mousedown', (e) => {
         isNavDragging = true;
-        offsetX = e.clientX - nav.getBoundingClientRect().left;
-        offsetY = e.clientY - nav.getBoundingClientRect().top;
+        offsetX = e.clientX - elements.nav.getBoundingClientRect().left;
+        offsetY = e.clientY - elements.nav.getBoundingClientRect().top;
         e.preventDefault();
     });
 
-    const navItem = document.querySelector("#navbar div")
+    const navItem = document.querySelector("#navbar div");
 
-    // Handle dragging
     document.addEventListener('mousemove', (e) => {
         if (isNavDragging) {
             let newLeft = e.clientX - offsetX;
             let newTop = e.clientY - offsetY;
-
-            // Get the current dimensions of the nav element
-            const navWidth = nav.offsetWidth;
-            const navHeight = nav.offsetHeight;
-
-            // Constrain the new position within the bounds of the viewport
-            // Ensure that the nav doesn't go past the left or top edges
+            const navWidth = elements.nav.offsetWidth;
+            const navHeight = elements.nav.offsetHeight;
             newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - navWidth));
             newTop = Math.max(0, Math.min(newTop, window.innerHeight - navHeight));
-
-            // Move the nav element to the constrained position
-            nav.style.left = `${newLeft}px`;
-            nav.style.top = `${newTop}px`;
-
-
-            // Check if the nav box hits the screen boundary (left, right, top, or bottom)
-            const navRect = nav.getBoundingClientRect();
-            // Check if any edge of the nav is at the boundary of the screen
-
-
-            // If the nav box hits the left or right edge of the screen
+            elements.nav.style.left = `${newLeft}px`;
+            elements.nav.style.top = `${newTop}px`;
+            const navRect = elements.nav.getBoundingClientRect();
             if (navRect.left <= 0) {
-                navItem.classList.add('flex-col')
-
+                navItem.classList.add('flex-col');
             } else if (navRect.right >= window.innerWidth - navRect.height) {
                 console.log('right edge');
             }
-
-            // If the nav box hits the top or bottom edge of the screen
             if (navRect.top <= 0) {
                 navRect.left = 0;
-                navItem.classList.remove('flex-col')
+                navItem.classList.remove('flex-col');
             } else if (navRect.bottom >= window.innerHeight - navRect.width) {
                 console.log('bottom edge');
             }
         }
     });
 
-    // Stop dragging
     document.addEventListener('mouseup', () => {
         isNavDragging = false;
     });
 
-    const logoToggle = document.querySelector('#logoToggle');
-    const colorPicker = document.getElementById('color_picker');
+    // === Dark Mode Toggle ===
     const darkModeClass = 'dark-mode';
 
-    // Apply dark or light mode based on local storage
     function applyMode(darkModeEnabled) {
         if (darkModeEnabled) {
-            canvas.classList.add(darkModeClass);
-            canvas.style.backgroundColor = '#374151'; // Dark background
-            colorPicker.value = '#ffffff'; // Light text color for dark mode
+            elements.canvas.classList.add(darkModeClass);
+            elements.canvas.style.backgroundColor = '#374151';
+            elements.colorPicker.value = '#ffffff';
         } else {
-            canvas.classList.remove(darkModeClass);
-            canvas.style.backgroundColor = '#DDE4E6'; // Light background
-            colorPicker.value = '#000000'; // Dark text color for light mode
+            elements.canvas.classList.remove(darkModeClass);
+            elements.canvas.style.backgroundColor = '#DDE4E6';
+            elements.colorPicker.value = '#000000';
         }
         redrawCanvas();
     }
 
-    // Initial setup on page load
     applyMode(localStorage.getItem('darkMode') === 'enabled');
 
-    // Toggle dark mode and save state to local storage
-    logoToggle.addEventListener('click', () => {
-        const isDarkMode = canvas.classList.contains(darkModeClass);
+    elements.logoToggle.addEventListener('click', () => {
+        const isDarkMode = elements.canvas.classList.contains(darkModeClass);
         localStorage.setItem('darkMode', isDarkMode ? 'disabled' : 'enabled');
         applyMode(!isDarkMode);
     });
@@ -636,38 +514,141 @@ window.onload = function () {
 
     // === Draw Horizontal Lines ===
     function drawHorizontalLines() {
-        const lineSpacing = 35; // Adjust the spacing between lines as needed
-        ctx.strokeStyle = localStorage.getItem('darkMode') === 'enabled' ? '#ffffff' : '#374151'; // Dark or light mode line color
+        const lineSpacing = 35;
+        ctx.strokeStyle = localStorage.getItem('darkMode') === 'enabled' ? '#ffffff' : '#374151';
         ctx.lineWidth = 1 * scaleFactor;
-
         const startY = Math.floor(-canvasYOffset / scaleFactor / lineSpacing) * lineSpacing;
-        const endY = Math.ceil((canvas.height - canvasYOffset) / scaleFactor / lineSpacing) * lineSpacing;
-
+        const endY = Math.ceil((elements.canvas.height - canvasYOffset) / scaleFactor / lineSpacing) * lineSpacing;
         for (let y = startY; y <= endY; y += lineSpacing) {
             const posY = y * scaleFactor + canvasYOffset;
             ctx.beginPath();
             ctx.moveTo(0, posY);
-            ctx.lineTo(canvas.width, posY);
+            ctx.lineTo(elements.canvas.width, posY);
             ctx.stroke();
         }
     }
 
-    // Redraw the canvas
-    function redrawCanvas() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawPaths();
-        drawTexts();
-        if (isnotebook) drawHorizontalLines();
-    }
-
-    // Initial draw call
-    redrawCanvas();
-
-    document.getElementById('mode').addEventListener('click', () => {
+    elements.modeButton.addEventListener('click', () => {
         isnotebook = !isnotebook;
         localStorage.setItem('isnotebook', isnotebook);
         redrawCanvas();
     });
 
+    // Event Listeners
+    elements.handGrab.addEventListener('click', () => {
+        pencilMode = false;
+        eraserMode = false;
+        addTextMode = false;
+        elements.canvas.classList.add('cursor-grab');
+        elements.canvas.style.cursor = 'grab';
+    });
 
+    window.addEventListener('keydown', (e) => {
+        if (e.key === '+') {
+            applyZoom(1 + zoomIncrement);
+        } else if (e.key === '-') {
+            applyZoom(1 - zoomIncrement);
+        } else if (e.ctrlKey && e.key === 'z') {
+            e.preventDefault(); // Prevent browser's default undo
+            undo();
+        } else if (e.ctrlKey && e.key === 'y') {
+            e.preventDefault(); // Prevent browser's default redo
+            redo();
+        } else if (e.key === 'Delete') {
+            deleteSelected();
+        }
+    });
+
+    const keysPressed = {};
+    window.addEventListener('keyup', (e) => {
+        delete keysPressed[e.key];
+    });
+
+    elements.zoomInButton.addEventListener('click', () => applyZoom(1 + zoomIncrement));
+    elements.zoomOutButton.addEventListener('click', () => applyZoom(1 - zoomIncrement));
+    elements.addTextButton.addEventListener('click', () => {
+        addTextMode = true;
+        eraserMode = false;
+        pencilMode = false;
+        setActiveTool('text');
+        elements.canvas.addEventListener('click', addTextHandler);
+    });
+
+    elements.canvas.addEventListener('mousedown', (e) => {
+        if (pencilMode) {
+            isDrawing = true;
+            [lastX, lastY] = [
+                (e.offsetX - canvasXOffset) / scaleFactor,
+                (e.offsetY - canvasYOffset) / scaleFactor
+            ];
+        } else if (eraserMode) {
+            isDrawing = true;
+        } else {
+            isDrawing = false;
+        }
+    });
+
+    elements.canvas.addEventListener('mousemove', (e) => {
+        if (isDrawing) {
+            if (pencilMode) {
+                drawPath(e);
+            } else if (eraserMode) {
+                erasePath(e);
+            }
+        }
+    });
+
+    elements.canvas.addEventListener('mouseup', () => stopDrawing());
+    elements.canvas.addEventListener('mouseout', () => stopDrawing());
+
+    elements.canvas.addEventListener('click', (e) => {
+        if (!pencilMode && !eraserMode) {
+            selectElement(
+                (e.offsetX - canvasXOffset) / scaleFactor,
+                (e.offsetY - canvasYOffset) / scaleFactor
+            );
+            wasHoveringText = true;
+        }
+    });
+
+    let wasHoveringText = false;
+
+    elements.canvas.addEventListener('mousemove', (e) => {
+        if (!pencilMode && !eraserMode) {
+            const x = (e.offsetX - canvasXOffset) / scaleFactor;
+            const y = (e.offsetY - canvasYOffset) / scaleFactor;
+            const text = findTextAtPosition(x, y);
+            if (text) {
+                if (!wasHoveringText) {
+                    elements.canvas.style.cursor = 'pointer';
+                    drawBorderAroundText(text, 'blue', true);
+                    wasHoveringText = true;
+                }
+            } else {
+                if (wasHoveringText) {
+                    elements.canvas.style.cursor = 'default';
+                    redrawCanvas();
+                    wasHoveringText = false;
+                }
+            }
+        }
+    });
+
+    elements.canvas.addEventListener('mousedown', (e) => {
+        if (!isDrawing && !pencilMode && !eraserMode) {
+            startDragging(e);
+        }
+    });
+
+    elements.canvas.addEventListener('mousemove', (e) => {
+        handleDragging(e);
+    });
+
+    elements.canvas.addEventListener('mouseup', () => {
+        stopDragging();
+    });
+
+    elements.canvas.addEventListener('mouseout', () => {
+        stopDragging();
+    });
 };
