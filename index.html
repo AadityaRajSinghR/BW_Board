@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draggable Canvas with Zoom and Element Scaling</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mynerve&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #cursor {
+            position: absolute;
+            border: 1px solid red;
+            display: none;
+            border-radius: 50%;
+            background: #00000052;
+        }
+    </style>
+</head>
+
+<body class="">
+
+
+    <!-- logo -->
+
+    <div id="logoToggle"
+        class="absolute p-2 text-center text-gray-300 bg-gray-800 cursor-pointer select-none top-5 right-20 rounded-xl">
+        <h1 class="text-2xl font-[Mynerve]  leading-3 pt-2"> B&W </h1>
+        <small >A smart black & White Board</small>
+    </div>
+
+    <!-- Navbar -->
+
+    <nav id="navbar" class="absolute select-none top-2 ">
+        <div class="flex items-center gap-2 p-3 duration-1000 bg-gray-800 rounded-full shadow-2xl">
+
+
+            <button id="nav-toggle" title="nav-toggle" class="relative">
+                <i
+                    class="p-2 text-lg text-white transition-colors ri-draggable rounded-xl hover:cursor-move hover:bg-gray-700"></i>
+            </button>
+
+            <!-- Icon 1: Pencil -->
+
+            <button title="Pencil" class="relative">
+                <i id="pencilButton"
+                    class="p-2 text-lg text-white transition-colors rounded-full ri-pencil-fill hover:bg-gray-700"></i>
+            </button>
+
+            <!-- Icon 2: Eraser -->
+            <button title="Eraser" class="relative">
+                <i id="eraserButton"
+                    class="p-2 text-lg text-gray-300 transition-colors rounded-full ri-eraser-fill hover:bg-gray-700"></i>
+            </button>
+
+            <!-- Text icons -->
+            <button title="Add Text" class="relative">
+                <i id="addTextButton"
+                    class="p-2 text-lg text-gray-300 transition-colors rounded-full ri-text hover:bg-gray-700"></i>
+            </button>
+
+            <!-- Clear Button -->
+            <button id="clearButton" title="Clear All" class="relative">
+                <i
+                    class="p-2 text-lg text-gray-300 transition-colors rounded-full ri-delete-bin-3-fill hover:bg-gray-700"></i>
+            </button>
+
+            <!-- Brush Size Control -->
+
+            <button class="relative group" title="Brush Size">
+                <i class="p-2 text-lg text-gray-300 transition-colors rounded-full ri-brush-fill hover:bg-gray-700"></i>
+                <div class="absolute hidden bg-gray-700 top-7 rounded-xl group-hover:flex ">
+                    <input type="range" id="brush_size" value="5" min="1" max="20" class="m-2 rounded-full ">
+                </div>
+            </button>
+
+            <!-- Eraser Size Control -->
+            <button class="relative group" title="Rubber Size">
+                <i
+                    class="p-2 text-lg text-gray-300 transition-colors rounded-full ri-collapse-vertical-fill hover:bg-gray-700"></i>
+                <div class="absolute hidden bg-gray-700 top-7 rounded-xl group-hover:flex">
+                    <input type="number" id="rubber_size" value="12"
+                        class="w-16 px-2 bg-gray-700 border-none rounded-full">
+                </div>
+            </button>
+
+
+            <!-- Color Picker -->
+            <button class="relative group" title="Color Picker">
+                <label for="color_picker">
+                    <i
+                        class="p-2 text-lg text-gray-300 transition-colors rounded-full ri-palette-fill hover:bg-gray-700"></i></label>
+                <div class="absolute hidden bg-gray-700 top-7 rounded-xl">
+                    <input type="color" id="color_picker" value="#000000"
+                        class="p-1 bg-gray-700 border-none rounded-full">
+                </div>
+            </button>
+
+            <!-- Font Size -->
+            <button class="relative group" title="Font Size">
+                <i
+                    class="p-2 text-lg text-gray-300 transition-colors rounded-full ri-font-size-2 hover:bg-gray-700"></i>
+                <div class="absolute hidden bg-gray-700 top-7 rounded-xl group-hover:flex">
+                    <input type="number" id="font_size" value="12"
+                        class="w-16 px-2 bg-gray-700 border-none rounded-full">
+                </div>
+            </button>
+
+        </div>
+    </nav>
+
+
+    <div id="cursor"></div>
+
+    <div id="canvasContainer">
+        <canvas id="drawingCanvas"></canvas>
+    </div>
+
+    <!-- Zoom Controls -->
+    <div class="absolute flex flex-col space-y-2 bottom-4 right-4">
+        <button id="zoomInButton" title="Zoom In"
+            class="p-2 text-white transition-colors bg-gray-800 rounded-full hover:bg-gray-700">
+            <i class="text-lg ri-zoom-in-line"></i>
+        </button>
+        <button id="zoomOutButton" title="Zoom Out"
+            class="p-2 text-white transition-colors bg-gray-800 rounded-full hover:bg-gray-700">
+            <i class="text-lg ri-zoom-out-line"></i>
+        </button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,60 @@
+/* General body and page styling */
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f4f4f4;
+}
+
+/* Container for buttons and controls */
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+/* Style for buttons */
+button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+/* Style for the color picker and brush size slider */
+input[type="color"],
+input[type="range"] {
+    margin: 5px;
+}
+
+/* Canvas styling */
+#drawingCanvas {
+    border: 2px solid #000;
+    background-color: #ffffff;
+}
+
+
+/* Rubber Cursor */
+
+.custom-cursor {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.226);
+    border:1px solid #000;
+    border-radius: 50%; /* Makes it a circle */
+    pointer-events: none; /* Prevents the cursor from interfering with clicks */
+    z-index: 1000;
+    transform: translate(-50%, -50%);
+}
